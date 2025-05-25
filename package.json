@@ -11,7 +11,8 @@
     "astro": "astro",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "comments": "curl -L https://unpkg.com/@waline/client@latest/dist/waline.css -o public/assets/waline/waline.css && curl -L https://unpkg.com/@waline/client@latest/dist/waline.js -o public/assets/waline/waline.js"
+    "comments": "curl -L https://unpkg.com/@waline/client@latest/dist/waline.css -o public/assets/waline/waline.css && curl -L https://unpkg.com/@waline/client@latest/dist/waline.js -o public/assets/waline/waline.js",
+    "copy-posts": "node scripts/copy-posts.js"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.0",

@@ -41,7 +41,7 @@ abbrlink: uv-manage
 
 2. 针对`Conda`太慢的问题, `uv`使用rust进行重构, 在保证功能性的同时, 大幅加快速度, 真正做到"快到飞起"
 
-   ![](https://github.com/astral-sh/uv/assets/1309177/629e59c0-9c6e-4013-9ad4-adb2bcf5080d)
+   ![uv速度](https://img.qlqqs.com/b/2025/05/25/6832b55b2f290.png)
 
 3. 针对"复现难度高"的问题, `uv`的实现类似于前端包管理工具, 通过`pyproject.toml`(类似于`package.json`)确定包版本, 以及一些自定义配置. 同时使用`uv.lock`(类似`npm.lock`/`pnpm.lock`)等唯一确定当前使用的依赖版本, 确保可以复现.
 
@@ -175,7 +175,7 @@ dev = [
 
 如果我们需要gpu版本的话, 有以下两个方式:
 
-1. `uv pip install torch<可选==version> --index-url https://download.pytorch.org/whl/cu126`(这里的126可以更换, 具体看需求). 通过以上命令先下载torch包. 之后再使用`uv add torch<可选==version>`进行引入. 不过这种方式需要拥有良好的网络条件.
+1. `uv pip install torch<可选<mark>version> --index-url https://download.pytorch.org/whl/cu126`(这里的126可以更换, 具体看需求). 通过以上命令先下载torch包. 之后再使用`uv add torch<可选</mark>version>`进行引入. 不过这种方式需要拥有良好的网络条件.
 
 2. 使用南京大学torch的gpu版本镜像源
 
@@ -252,7 +252,7 @@ dev = [
 
 1. 确定自己需要的Python, Torch, CUDA版本, 到Dockerhub的Pytorch页面寻找对应的tag. 例如我们想寻找2.6.0的torch
 
-   [![Dockerhub中Pytorch界面截图](https://img.qlqqs.com/b/2025/05/23/68303edc8b3e0.png)](https://img.qlqqs.com/b/2025/05/23/68303edc8b3e0.png)
+   ![Dockerhub中Pytorch界面截图](https://img.qlqqs.com/b/2025/05/23/68303edc8b3e0.png)
 
    尝试优先级为: runtime > devel. 个人认为镜像大小的重要性还是比尝试构建的时间要更加重要.(特别大的Docker镜像遇到小水管的时候就老实了)
 
@@ -307,7 +307,7 @@ dev = [
 
 至此, 我们能够基本排除是镜像源导致的问题. 所以我索性将pyproject.toml里面的镜像配置全部删除, 之后进行构建. 马萨卡, 没想到居然能跑了!
 
-[![成功运行](https://img.qlqqs.com/b/2025/05/23/6830598388688.png)](https://img.qlqqs.com/b/2025/05/23/6830598388688.png)
+![成功运行](https://img.qlqqs.com/b/2025/05/23/6830598388688.png)
 
 于是我开始寻找这个问题的源头, 难道还是因为镜像源?
 
