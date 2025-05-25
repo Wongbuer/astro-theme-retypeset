@@ -446,16 +446,16 @@ async function checkImageLinks(options) {
     }
 
     const abbrlink = abbrMatch[1];
-    
+
     // 检查图片链接
     const { needsUpdate, oldLinks } = checkImagePathsInContent(content, abbrlink);
-    
+
     // 检查是否需要更新 updated 字段
     const needsUpdateDate = checkAndUpdateModifiedDate(mdFile, content);
-    
+
     if (needsUpdate || needsUpdateDate) {
       let updatedContent = content;
-      
+
       if (needsUpdate) {
         console.log(`文件 ${path.relative(rootDir, mdFile)} 包含不匹配的图片链接`);
 
@@ -464,16 +464,16 @@ async function checkImageLinks(options) {
           updatedCount++;
         }
       }
-      
+
       if (needsUpdateDate) {
         console.log(`文件 ${path.relative(rootDir, mdFile)} 需要更新修改日期`);
-        
+
         if (options.force || await confirmAction(`是否更新修改日期？(y/N) `)) {
           updatedContent = updateModifiedDate(mdFile, updatedContent);
           updatedDateCount++;
         }
       }
-      
+
       // 写入更新后的内容
       if (updatedContent !== content) {
         fs.writeFileSync(mdFile, updatedContent, 'utf8');
@@ -493,10 +493,10 @@ function checkAndUpdateModifiedDate(filePath, content) {
     const stats = fs.statSync(filePath);
     const modifiedDate = new Date(stats.mtime);
     const modifiedDateStr = formatDate(modifiedDate);
-    
+
     // 检查 frontmatter 中是否已有 updated 字段
     const updatedMatch = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
-    
+
     // 如果没有 updated 字段，或者 updated 字段的值与文件修改时间不一致，则需要更新
     if (!updatedMatch) {
       // 检查是否有 published 字段，确保文件有 frontmatter
@@ -510,7 +510,7 @@ function checkAndUpdateModifiedDate(filePath, content) {
         return true;
       }
     }
-    
+
     return false;
   } catch (err) {
     console.error(`检查文件修改日期时出错: ${err.message}`);
@@ -525,10 +525,10 @@ function updateModifiedDate(filePath, content) {
     const stats = fs.statSync(filePath);
     const modifiedDate = new Date(stats.mtime);
     const modifiedDateStr = formatDate(modifiedDate);
-    
+
     // 检查 frontmatter 中是否已有 updated 字段
     const updatedMatch = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
-    
+
     if (updatedMatch) {
       // 替换现有的 updated 字段
       return content.replace(
@@ -736,7 +736,7 @@ function showHelp(command) {
      如发现不匹配，可以自动修复图片链接并移动相应的图片文件。
   2. 检查文件是否有修改，如有修改则更新 frontmatter 中的 updated 字段。
      如果 frontmatter 中没有 updated 字段，则会添加该字段。
-  
+
   不指定特定文件时，将检查 src/content/posts 目录下的所有 Markdown 文件。
 
 示例:
@@ -862,7 +862,7 @@ function processMarkdownFile(options) {
       // 获取文件创建日期
       const autoPublished = getFileCreationDate(sourcePath);
       const published = customPublished || autoPublished;
-      
+
       // 获取文件修改日期作为 updated 字段
       const updated = formatDate(new Date(fs.statSync(sourcePath).mtime));
 
