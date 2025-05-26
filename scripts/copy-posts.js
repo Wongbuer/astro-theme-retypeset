@@ -65,7 +65,7 @@ function getDateBasedDirectory(filePath) {
       console.warn(`无法获取文件创建日期：${err.message}，使用当前日期`);
     }
   }
-  
+
   // 如果没有提供文件路径或获取创建日期失败，使用当前日期
   const date = new Date();
   const year = date.getFullYear();
@@ -80,95 +80,95 @@ function processImages(content, sourcePath, abbrlink) {
   const imageMappings = new Map();
   const imagePromises = [];
   let imageCount = 0;
-  
+
   // 处理 Markdown 图片引用格式 ![alt](path)
   const mdImagePattern = /!\[(.*?)\]\(([^)]+)\)/g;
   let mdMatch;
   while ((mdMatch = mdImagePattern.exec(content)) !== null) {
     const [fullMatch, altText, imgPath] = mdMatch;
-    
+
     // 跳过外部链接和数据 URL
-    if (imgPath.startsWith('http://') || 
-        imgPath.startsWith('https://') || 
+    if (imgPath.startsWith('http://') ||
+        imgPath.startsWith('https://') ||
         imgPath.startsWith('data:')) {
       continue;
     }
-    
+
     // 解析图片路径（相对于源文件目录）
-    const absoluteImgPath = path.isAbsolute(imgPath) 
-      ? imgPath 
+    const absoluteImgPath = path.isAbsolute(imgPath)
+      ? imgPath
       : path.resolve(sourceDir, imgPath);
-    
+
     // 检查图片是否存在
     if (!fs.existsSync(absoluteImgPath)) {
       console.warn(`警告: 图片 ${absoluteImgPath} 不存在`);
       continue;
     }
-    
+
     // 创建图片的新路径
     const newImgInfo = prepareImageCopy(absoluteImgPath, abbrlink);
-    
+
     // 准备复制图片
     imagePromises.push(() => copyImage(absoluteImgPath, newImgInfo.path));
-    
+
     // 保存图片映射关系，稍后替换内容
     imageMappings.set(fullMatch, `![${altText}](/src/assets/images/posts/${abbrlink}/${newImgInfo.name})`);
     imageCount++;
   }
-  
+
   // 处理 HTML img 标签格式 <img src="path" alt="alt" />
   const htmlImagePattern = /<img\s+[^>]*?src=["']([^"']+)["'][^>]*?>/gi;
   let htmlMatch;
   while ((htmlMatch = htmlImagePattern.exec(content)) !== null) {
     const [fullMatch, imgPath] = htmlMatch;
-    
+
     // 跳过外部链接和数据 URL
-    if (imgPath.startsWith('http://') || 
-        imgPath.startsWith('https://') || 
+    if (imgPath.startsWith('http://') ||
+        imgPath.startsWith('https://') ||
         imgPath.startsWith('data:')) {
       continue;
     }
-    
+
     // 解析图片路径（相对于源文件目录）
-    const absoluteImgPath = path.isAbsolute(imgPath) 
-      ? imgPath 
+    const absoluteImgPath = path.isAbsolute(imgPath)
+      ? imgPath
       : path.resolve(sourceDir, imgPath);
-    
+
     // 检查图片是否存在
     if (!fs.existsSync(absoluteImgPath)) {
       console.warn(`警告: 图片 ${absoluteImgPath} 不存在`);
       continue;
     }
-    
+
     // 创建图片的新路径
     const newImgInfo = prepareImageCopy(absoluteImgPath, abbrlink);
-    
+
     // 准备复制图片
     imagePromises.push(() => copyImage(absoluteImgPath, newImgInfo.path));
-    
+
     // 提取 alt 文本
     const altMatch = fullMatch.match(/alt=["']([^"']*)["']/i);
     const altText = altMatch ? altMatch[1] : '';
-    
+
     // 构建新的 img 标签，保留原有的其他属性
     let newImgTag = fullMatch.replace(
       /src=["'][^"']+["']/i,
       `src="/src/assets/images/posts/${abbrlink}/${newImgInfo.name}"`
     );
-    
+
     // 保存图片映射关系，稍后替换内容
     imageMappings.set(fullMatch, newImgTag);
     imageCount++;
   }
-  
+
   // 执行所有图片复制操作
   imagePromises.forEach(copyFn => copyFn());
-  
+
   // 替换内容中的图片路径
   for (const [oldPath, newPath] of imageMappings.entries()) {
     processedContent = processedContent.replace(oldPath, newPath);
   }
-  
+
   return {
     content: processedContent,
     imageCount: imageCount
@@ -183,7 +183,7 @@ function prepareImageCopy(absoluteImgPath, abbrlink) {
   const newImgName = `${abbrlink}-${imgHash}${imgExt}`;
   const newImgDir = path.join(imagesDir, 'posts', abbrlink);
   const newImgPath = path.join(newImgDir, newImgName);
-  
+
   return {
     name: newImgName,
     dir: newImgDir,
@@ -198,7 +198,7 @@ function copyImage(source, destination) {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
-  
+
   // 复制图片
   fs.copyFileSync(source, destination);
   console.log(`成功: 图片已复制到 ${destination}`);
@@ -210,42 +210,42 @@ function processMarkdownContent(content, skipFormatting = false) {
   if (skipFormatting) {
     return content;
   }
-  
+
   let processedContent = content;
-  
+
   // 替换 ==xxx== 为 <mark>xxx</mark>
   processedContent = processedContent.replace(/==([^=]+)==/g, '<mark>$1</mark>');
-  
+
   // 替换 !!!xxx!!! 为 <kbd>xxx</kbd> (键盘样式)
   processedContent = processedContent.replace(/!!!([^!]+)!!!/g, '<kbd>$1</kbd>');
-  
+
   // 替换 ~~xxx~~ 为 <s>xxx</s>，如果尚未使用此语法
   processedContent = processedContent.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-  
+
   // 替换 ^xxx^ 为 <sup>xxx</sup> (上标)
   processedContent = processedContent.replace(/\^([^\^]+)\^/g, '<sup>$1</sup>');
-  
+
   // 替换 ~xxx~ 为 <sub>xxx</sub> (下标)
   processedContent = processedContent.replace(/~([^~]+)~/g, '<sub>$1</sub>');
-  
+
   // 替换 ++xxx++ 为 <ins>xxx</ins> (插入文本)
   processedContent = processedContent.replace(/\+\+([^+]+)\+\+/g, '<ins>$1</ins>');
-  
+
   return processedContent;
 }
 
 // 解析命令行参数
 function parseArgs() {
   const args = process.argv.slice(2);
-  
+
   // 默认命令是 'add'（添加新文章）
   let command = 'add';
-  
+
   // 如果第一个参数不以'-'开头，则视为子命令
   if (args.length > 0 && !args[0].startsWith('-')) {
     command = args.shift();
   }
-  
+
   const parsedArgs = {
     command,          // 子命令：add, update, check, cleanup
     sourcePath: null, // 文件路径
@@ -260,49 +260,68 @@ function parseArgs() {
     updateImageLinks: false, // 是否更新图片链接
     skipFormatting: false, // 是否跳过格式处理
     force: false,     // 是否强制执行（不询问确认）
-    help: false,      // 是否显示帮助
-    verbose: false    // 是否启用详细模式
+    verbose: false,    // 是否启用详细模式
+    help: false       // 是否显示帮助
   };
-  
+
   // 处理常规参数
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    
+
     if (arg === '--help' || arg === '-h') {
       parsedArgs.help = true;
       continue;
     }
-    
+
     if (arg === '--force' || arg === '-f') {
       parsedArgs.force = true;
       continue;
     }
-    
-    if (arg.startsWith('--')) {
-      const paramName = arg.slice(2);
+
+    if (arg === '--verbose' || arg === '-v') {
+      parsedArgs.verbose = true;
+      continue;
+    }
+
+    // 处理带值的参数
+    if ((arg.startsWith('--') || (arg.startsWith('-') && arg.length === 2)) && i + 1 < args.length) {
+      let paramName;
+      if (arg.startsWith('--')) {
+        paramName = arg.slice(2);
+      } else {
+        // 短选项映射
+        const shortOptionMap = {
+          's': 'source',
+          'd': 'dir',
+          't': 'tags',
+          'a': 'abbrlink',
+          'o': 'old-abbrlink'
+        };
+        paramName = shortOptionMap[arg.slice(1)] || arg.slice(1);
+      }
+
       const nextArg = args[i + 1];
-      
-      if (nextArg && !nextArg.startsWith('--')) {
+      if (!nextArg.startsWith('-')) {
         i++;
-        
+
         switch (paramName) {
           case 'source':
-          case 's':
           case 'file':
             parsedArgs.sourcePath = nextArg;
             break;
           case 'dir':
-          case 'd':
+          case 'subdirectory':
+          case 'subdir':
             parsedArgs.subdirectory = nextArg;
             break;
           case 'tags':
-          case 't':
-            parsedArgs.tags = nextArg.split(',');
+            parsedArgs.tags = nextArg.split(',').map(tag => tag.trim());
             break;
           case 'title':
             parsedArgs.title = nextArg;
             break;
           case 'date':
+          case 'published':
             parsedArgs.published = nextArg;
             break;
           case 'toc':
@@ -313,64 +332,57 @@ function parseArgs() {
             break;
           case 'abbrlink':
           case 'link':
-          case 'a':
             parsedArgs.abbrlink = nextArg;
             break;
           case 'old-abbrlink':
           case 'old':
-          case 'o':
             parsedArgs.oldAbbrlink = nextArg;
             break;
           case 'skip-formatting':
             parsedArgs.skipFormatting = nextArg.toLowerCase() === 'true';
             break;
-          case 'verbose':
-            parsedArgs.verbose = true;
-            break;
         }
-      } else if (paramName === 'toc') {
-        parsedArgs.toc = true;
-      } else if (paramName === 'skip-formatting') {
-        parsedArgs.skipFormatting = true;
-      } else if (paramName === 'update-image-links') {
-        parsedArgs.updateImageLinks = true;
-      } else if (paramName === 'verbose') {
-        parsedArgs.verbose = true;
       }
-    } else if (!parsedArgs.sourcePath) {
+    } else if (arg === '--update-image-links') {
+      parsedArgs.updateImageLinks = true;
+    } else if (arg === '--skip-formatting') {
+      parsedArgs.skipFormatting = true;
+    } else if (arg === '--toc') {
+      parsedArgs.toc = true;
+    } else if (!parsedArgs.sourcePath && !arg.startsWith('-')) {
       // 第一个非选项参数视为源文件路径
       parsedArgs.sourcePath = arg;
-    } else if (!parsedArgs.subdirectory) {
+    } else if (!parsedArgs.subdirectory && !arg.startsWith('-')) {
       // 第二个非选项参数视为子目录
       parsedArgs.subdirectory = arg;
-    } else if (parsedArgs.tags.length === 0) {
+    } else if (parsedArgs.tags.length === 0 && !arg.startsWith('-')) {
       // 第三个非选项参数视为标签列表
-      parsedArgs.tags = arg.split(',');
+      parsedArgs.tags = arg.split(',').map(tag => tag.trim());
     }
   }
-  
+
   // 如果同时指定了 oldAbbrlink 和 abbrlink，启用更新图片链接功能
   if (parsedArgs.oldAbbrlink && parsedArgs.abbrlink) {
     parsedArgs.updateImageLinks = true;
   }
-  
+
   // 根据命令设置默认值
   if (command === 'add' && !parsedArgs.subdirectory) {
     parsedArgs.subdirectory = getDateBasedDirectory(parsedArgs.sourcePath);
   }
-  
+
   return parsedArgs;
 }
 
 // 主函数
 async function main() {
   const args = parseArgs();
-  
+
   if (args.help) {
     showHelp(args.command);
     return;
   }
-  
+
   try {
     switch (args.command) {
       case 'add':
@@ -382,7 +394,7 @@ async function main() {
         }
         await processMarkdownFile(args);
         break;
-      
+
       case 'update':
         // 更新文章
         if (!args.sourcePath) {
@@ -394,17 +406,17 @@ async function main() {
         args.updateImageLinks = true;
         await processMarkdownFile(args);
         break;
-      
+
       case 'check':
         // 检查图片链接
         await checkImageLinks(args);
         break;
-        
+
       case 'cleanup':
         // 清理未引用的图片
         await cleanupImages(args);
         break;
-      
+
       default:
         console.error(`错误: 未知命令 "${args.command}"`);
         showHelp();
@@ -419,25 +431,25 @@ async function main() {
 async function checkImageLinks(options) {
   const startDir = options.sourcePath ? path.dirname(options.sourcePath) : postsDir;
   const mdFiles = options.sourcePath ? [options.sourcePath] : getAllMarkdownFiles(startDir);
-  
+
   console.log('正在检查图片链接...');
   let updatedCount = 0;
-  
+
   for (const mdFile of mdFiles) {
     const content = fs.readFileSync(mdFile, 'utf8');
     const abbrMatch = content.match(/abbrlink:\s*([^\s\n]+)/);
-    
+
     if (!abbrMatch) {
       console.warn(`警告: 文件 ${mdFile} 没有找到 abbrlink`);
       continue;
     }
-    
+
     const abbrlink = abbrMatch[1];
     const { needsUpdate, oldLinks } = checkImagePathsInContent(content, abbrlink);
-    
+
     if (needsUpdate) {
       console.log(`文件 ${path.relative(rootDir, mdFile)} 包含不匹配的图片链接`);
-      
+
       if (options.force || await confirmAction(`是否自动修复图片链接？(y/N) `)) {
         const updatedContent = updateImagePaths(content, oldLinks, abbrlink);
         fs.writeFileSync(mdFile, updatedContent, 'utf8');
@@ -446,7 +458,7 @@ async function checkImageLinks(options) {
       }
     }
   }
-  
+
   console.log(`检查完成，共更新了 ${updatedCount} 个文件`);
   return updatedCount > 0;
 }
@@ -455,7 +467,7 @@ async function checkImageLinks(options) {
 function getAllMarkdownFiles(dir) {
   const files = fs.readdirSync(dir);
   let mdFiles = [];
-  
+
   for (const file of files) {
     const filePath = path.join(dir, file);
     if (fs.statSync(filePath).isDirectory()) {
@@ -464,7 +476,7 @@ function getAllMarkdownFiles(dir) {
       mdFiles.push(filePath);
     }
   }
-  
+
   return mdFiles;
 }
 
@@ -472,7 +484,7 @@ function getAllMarkdownFiles(dir) {
 function checkImagePathsInContent(content, abbrlink) {
   const oldLinks = [];
   let needsUpdate = false;
-  
+
   // 检查 Markdown 图片引用
   const mdImagePattern = /!\[.*?\]\(\/src\/assets\/images\/posts\/([^\/]+)\/([^)]+)\)/g;
   let mdMatch;
@@ -483,7 +495,7 @@ function checkImagePathsInContent(content, abbrlink) {
       needsUpdate = true;
     }
   }
-  
+
   // 检查 HTML img 标签
   const htmlImagePattern = /<img\s+[^>]*?src=["']\/src\/assets\/images\/posts\/([^\/]+)\/([^"']+)["'][^>]*?>/gi;
   let htmlMatch;
@@ -494,14 +506,14 @@ function checkImagePathsInContent(content, abbrlink) {
       needsUpdate = true;
     }
   }
-  
+
   return { needsUpdate, oldLinks };
 }
 
 // 更新内容中的图片路径
 function updateImagePaths(content, oldLinks, abbrlink) {
   let updatedContent = content;
-  
+
   for (const link of oldLinks) {
     if (link.type === 'md') {
       // 更新 Markdown 图片引用
@@ -515,11 +527,11 @@ function updateImagePaths(content, oldLinks, abbrlink) {
       );
       updatedContent = updatedContent.replace(link.match, newLink);
     }
-    
+
     // 如果需要，移动图片文件
     moveImageFile(link.abbrlink, abbrlink, link.filename);
   }
-  
+
   return updatedContent;
 }
 
@@ -534,18 +546,18 @@ function moveImageFile(oldAbbrlink, newAbbrlink, filename) {
   const oldImgPath = path.join(imagesDir, 'posts', oldAbbrlink, filename);
   const newImgDir = path.join(imagesDir, 'posts', newAbbrlink);
   const newImgPath = path.join(newImgDir, filename);
-  
+
   // 如果源文件不存在，则跳过
   if (!fs.existsSync(oldImgPath)) {
     console.warn(`警告: 图片 ${oldImgPath} 不存在`);
     return;
   }
-  
+
   // 确保目标目录存在
   if (!fs.existsSync(newImgDir)) {
     fs.mkdirSync(newImgDir, { recursive: true });
   }
-  
+
   // 移动文件
   try {
     fs.copyFileSync(oldImgPath, newImgPath);
@@ -559,7 +571,7 @@ function moveImageFile(oldAbbrlink, newAbbrlink, filename) {
 // 询问用户确认
 async function confirmAction(prompt) {
   process.stdout.write(prompt);
-  
+
   return new Promise(resolve => {
     process.stdin.once('data', data => {
       const answer = data.toString().trim().toLowerCase();
@@ -684,7 +696,7 @@ function processMarkdownFile(options) {
       updateImageLinks: shouldUpdateImageLinks = false,
       skipFormatting = false
     } = options;
-    
+
     // 检查源文件是否存在
     if (!fs.existsSync(sourcePath)) {
       console.error(`错误: 源文件 ${sourcePath} 不存在`);
@@ -693,7 +705,7 @@ function processMarkdownFile(options) {
 
     // 读取文件内容
     let content = fs.readFileSync(sourcePath, 'utf8');
-    
+
     // 处理Markdown内容，替换特定语法
     content = processMarkdownContent(content, skipFormatting);
 
@@ -701,17 +713,17 @@ function processMarkdownFile(options) {
     const hasFrontmatter = content.startsWith('---');
     let processedContent = content;
     let finalAbbrlink = customAbbrlink;
-    
+
     if (hasFrontmatter) {
       // 从现有 frontmatter 中提取 abbrlink
       const abbrMatch = content.match(/abbrlink:\s*([^\s\n]+)/);
       const existingAbbrlink = abbrMatch ? abbrMatch[1] : null;
-      
+
       // 如果没有指定自定义 abbrlink，但文件中存在 abbrlink，则使用现有的
       if (!finalAbbrlink && existingAbbrlink) {
         finalAbbrlink = existingAbbrlink;
       }
-      
+
       // 如果指定了 abbrlink 并且与现有的不同，则更新 frontmatter
       if (finalAbbrlink && existingAbbrlink && finalAbbrlink !== existingAbbrlink) {
         processedContent = processedContent.replace(
@@ -720,12 +732,12 @@ function processMarkdownFile(options) {
         );
         console.log(`已更新 frontmatter 中的 abbrlink: ${existingAbbrlink} -> ${finalAbbrlink}`);
       }
-      
+
       // 如果需要更新图片链接
       if (shouldUpdateImageLinks && oldAbbrlink && finalAbbrlink) {
         processedContent = updateImageLinks(processedContent, oldAbbrlink, finalAbbrlink);
       }
-      
+
       // 如果指定了自定义 abbrlink，但没有指定 oldAbbrlink，则尝试使用现有的 abbrlink 作为 oldAbbrlink
       if (shouldUpdateImageLinks && finalAbbrlink && !oldAbbrlink && existingAbbrlink) {
         processedContent = updateImageLinks(processedContent, existingAbbrlink, finalAbbrlink);
@@ -733,30 +745,30 @@ function processMarkdownFile(options) {
     } else {
       // 获取文件名作为备用标题
       const fileName = path.basename(sourcePath, '.md');
-      
+
       // 尝试从内容中获取第一个 h1 标题
       const autoTitle = getFirstH1Title(content) || fileName;
       const title = customTitle || autoTitle;
-      
+
       // 生成 abbrlink
       const autoAbbrlink = generateAbbrlink(content);
       finalAbbrlink = customAbbrlink || autoAbbrlink;
-      
+
       // 处理文章中的本地图片
       const { content: contentWithProcessedImages, imageCount } = processImages(content, sourcePath, finalAbbrlink);
       content = contentWithProcessedImages;
-      
+
       if (imageCount > 0) {
         console.log(`处理了 ${imageCount} 张本地图片`);
       }
-      
+
       // 获取文件创建日期
       const autoPublished = getFileCreationDate(sourcePath);
       const published = customPublished || autoPublished;
-      
+
       // 如果没有指定标签，添加一个默认标签
       const finalTags = tags.length > 0 ? tags : ['未分类'];
-      
+
       // 构建 frontmatter
       const frontmatter = `---
 title: ${title}
@@ -769,7 +781,7 @@ abbrlink: ${finalAbbrlink}
 ---
 
 `;
-      
+
       // 添加 frontmatter 到内容前面
       processedContent = frontmatter + content;
     }
@@ -785,7 +797,7 @@ abbrlink: ${finalAbbrlink}
 
     // 写入文件
     fs.writeFileSync(targetPath, processedContent, 'utf8');
-    
+
     console.log(`成功: 文件已复制到 ${targetPath}`);
     return true;
   } catch (error) {
@@ -799,35 +811,35 @@ function updateImageLinks(content, oldAbbrlink, newAbbrlink) {
   if (!oldAbbrlink || !newAbbrlink || oldAbbrlink === newAbbrlink) {
     return content;
   }
-  
+
   console.log(`更新图片链接: ${oldAbbrlink} -> ${newAbbrlink}`);
-  
+
   let updatedContent = content;
   let replacementCount = 0;
-  
+
   // 更新 Markdown 图片引用
   const mdImagePattern = new RegExp(`!\\[([^\\]]*)\\]\\(/src/assets/images/posts/${oldAbbrlink}/([^)]+)\\)`, 'g');
   updatedContent = updatedContent.replace(mdImagePattern, (match, alt, filename) => {
     replacementCount++;
     return `![${alt}](/src/assets/images/posts/${newAbbrlink}/${filename})`;
   });
-  
+
   // 更新 HTML img 标签
   const htmlImagePattern = new RegExp(`<img([^>]*)src=["']/src/assets/images/posts/${oldAbbrlink}/([^"']+)["']([^>]*)>`, 'g');
   updatedContent = updatedContent.replace(htmlImagePattern, (match, before, filename, after) => {
     replacementCount++;
     return `<img${before}src="/src/assets/images/posts/${newAbbrlink}/${filename}"${after}>`;
   });
-  
+
   if (replacementCount > 0) {
     console.log(`已更新 ${replacementCount} 个图片链接`);
   } else {
     console.log('没有找到需要更新的图片链接');
   }
-  
+
   // 同时需要移动图片文件
   moveImageFiles(oldAbbrlink, newAbbrlink);
-  
+
   return updatedContent;
 }
 
@@ -835,40 +847,40 @@ function updateImageLinks(content, oldAbbrlink, newAbbrlink) {
 function moveImageFiles(oldAbbrlink, newAbbrlink) {
   const oldImgDir = path.join(imagesDir, 'posts', oldAbbrlink);
   const newImgDir = path.join(imagesDir, 'posts', newAbbrlink);
-  
+
   // 检查旧目录是否存在
   if (!fs.existsSync(oldImgDir)) {
     console.log(`旧图片目录不存在: ${oldImgDir}`);
     return;
   }
-  
+
   // 确保新目录存在
   if (!fs.existsSync(newImgDir)) {
     fs.mkdirSync(newImgDir, { recursive: true });
   }
-  
+
   // 获取旧目录中的所有文件
   const files = fs.readdirSync(oldImgDir);
-  
+
   if (files.length === 0) {
     console.log('没有找到需要移动的图片文件');
     return;
   }
-  
+
   console.log(`移动 ${files.length} 个图片文件`);
-  
+
   // 移动每个文件
   for (const file of files) {
     const oldPath = path.join(oldImgDir, file);
     let newFileName = file;
-    
+
     // 可选：重命名文件，替换文件名中的 abbrlink 前缀
     if (file.startsWith(oldAbbrlink)) {
       newFileName = file.replace(oldAbbrlink, newAbbrlink);
     }
-    
+
     const newPath = path.join(newImgDir, newFileName);
-    
+
     try {
       fs.copyFileSync(oldPath, newPath);
       fs.unlinkSync(oldPath);
@@ -877,13 +889,13 @@ function moveImageFiles(oldAbbrlink, newAbbrlink) {
       console.error(`移动文件时出错: ${err.message}`);
     }
   }
-  
+
   // 删除旧目录（如果为空）
   try {
     const remainingFiles = fs.readdirSync(oldImgDir);
     if (remainingFiles.length === 0) {
       fs.rmdirSync(oldImgDir);
-      console.log(`已删除空目录: ${oldImgDir}`);
+      console.log(`已删除空目录: ${path.relative(rootDir, oldImgDir)}`);
     }
   } catch (err) {
     console.error(`删除目录时出错: ${err.message}`);
@@ -894,26 +906,26 @@ function moveImageFiles(oldAbbrlink, newAbbrlink) {
 async function cleanupImages(options) {
   const dryRun = !options.force; // 如果没有 --force，则为干运行模式
   const verbose = options.verbose || false;
-  
+
   console.log('开始检查未引用的图片...');
-  
+
   // 1. 获取所有 Markdown 文件
   console.log('获取所有 Markdown 文件...');
   const mdFiles = getAllMarkdownFiles(postsDir);
   console.log(`找到 ${mdFiles.length} 个 Markdown 文件`);
-  
+
   // 2. 从所有 Markdown 文件中提取图片引用
   console.log('提取所有图片引用...');
   const referencedImages = new Set();
-  
+
   for (const mdFile of mdFiles) {
     const content = fs.readFileSync(mdFile, 'utf8');
     const imageRefs = extractImageRefs(content);
-    
+
     if (verbose && imageRefs.size > 0) {
       console.log(`在 ${path.relative(rootDir, mdFile)} 中找到 ${imageRefs.size} 个图片引用`);
     }
-    
+
     imageRefs.forEach(ref => {
       // 转换为系统路径
       let imagePath = ref;
@@ -924,31 +936,31 @@ async function cleanupImages(options) {
       referencedImages.add(path.normalize(imagePath));
     });
   }
-  
+
   console.log(`找到 ${referencedImages.size} 个被引用的图片`);
-  
+
   // 3. 获取所有图片文件
   const imagesBaseDir = path.join(imagesDir, 'posts');
   if (!fs.existsSync(imagesBaseDir)) {
     console.log('图片目录不存在，没有需要清理的图片');
     return { total: 0, unreferenced: 0, deleted: 0 };
   }
-  
+
   console.log('获取所有图片文件...');
   const imageFiles = getAllFiles(imagesBaseDir);
   console.log(`找到 ${imageFiles.length} 个图片文件`);
-  
+
   // 4. 找出未被引用的图片
   const unreferencedImages = imageFiles.filter(imgFile => {
     const normalizedPath = path.normalize(imgFile);
     return !referencedImages.has(normalizedPath);
   });
-  
+
   console.log(`找到 ${unreferencedImages.length} 个未引用的图片`);
-  
+
   // 5. 删除未引用的图片（如果不是干运行模式）
   let deletedCount = 0;
-  
+
   if (unreferencedImages.length > 0) {
     if (dryRun) {
       console.log('干运行模式: 不会删除任何文件');
@@ -956,7 +968,7 @@ async function cleanupImages(options) {
       unreferencedImages.forEach(img => {
         console.log(`- ${path.relative(rootDir, img)}`);
       });
-      
+
       if (await confirmAction('是否删除这些未引用的图片？(y/N) ')) {
         await deleteUnreferencedImages(unreferencedImages, verbose);
         deletedCount = unreferencedImages.length;
@@ -968,7 +980,7 @@ async function cleanupImages(options) {
   } else {
     console.log('没有找到未引用的图片，无需清理');
   }
-  
+
   return {
     total: imageFiles.length,
     unreferenced: unreferencedImages.length,
@@ -979,7 +991,7 @@ async function cleanupImages(options) {
 // 删除未引用的图片
 async function deleteUnreferencedImages(images, verbose) {
   let deletedCount = 0;
-  
+
   for (const img of images) {
     try {
       fs.unlinkSync(img);
@@ -991,19 +1003,19 @@ async function deleteUnreferencedImages(images, verbose) {
       console.error(`删除 ${img} 时出错: ${err.message}`);
     }
   }
-  
+
   console.log(`已删除 ${deletedCount} 个未引用的图片`);
-  
+
   // 清理空目录
   await cleanupEmptyDirs(path.join(imagesDir, 'posts'));
-  
+
   return deletedCount;
 }
 
 // 从 Markdown 文件中提取图片引用
 function extractImageRefs(content) {
   const imageRefs = new Set();
-  
+
   // 提取 Markdown 图片引用
   const mdImagePattern = /!\[.*?\]\(([^)]+)\)/g;
   let mdMatch;
@@ -1013,7 +1025,7 @@ function extractImageRefs(content) {
       imageRefs.add(imgPath);
     }
   }
-  
+
   // 提取 HTML img 标签
   const htmlImagePattern = /<img\s+[^>]*?src=["']([^"']+)["'][^>]*?>/gi;
   let htmlMatch;
@@ -1023,14 +1035,14 @@ function extractImageRefs(content) {
       imageRefs.add(imgPath);
     }
   }
-  
+
   return imageRefs;
 }
 
 // 递归获取目录下的所有文件
 function getAllFiles(dir, fileList = []) {
   const files = fs.readdirSync(dir);
-  
+
   files.forEach(file => {
     const filePath = path.join(dir, file);
     if (fs.statSync(filePath).isDirectory()) {
@@ -1039,19 +1051,19 @@ function getAllFiles(dir, fileList = []) {
       fileList.push(filePath);
     }
   });
-  
+
   return fileList;
 }
 
 // 清理空目录
 async function cleanupEmptyDirs(dir) {
   const items = fs.readdirSync(dir);
-  
+
   for (const item of items) {
     const itemPath = path.join(dir, item);
     if (fs.statSync(itemPath).isDirectory()) {
       await cleanupEmptyDirs(itemPath);
-      
+
       // 检查目录是否为空
       const files = fs.readdirSync(itemPath);
       if (files.length === 0) {
@@ -1062,4 +1074,4 @@ async function cleanupEmptyDirs(dir) {
   }
 }
 
-main(); 
+main();
