@@ -15,6 +15,7 @@ import '@/styles/font.css'
 import '@/styles/global.css'
 import '@/styles/markdown.css'
 import '@/styles/transition.css'
+import Analytics from '@vercel/analytics/astro'
 
 interface Props {
   postTitle?: string
@@ -42,6 +43,7 @@ const MarginBottom = isPost && themeConfig.comment?.enabled
 >
   <Head {postTitle} {postDescription} {postSlug} />
   <body>
+  <Analytics/>
     <div
       class="mx-auto max-w-205.848 min-h-vh w-full min-h-dvh"
       p="x-[min(7.25vw,3.731rem)] y-10"
