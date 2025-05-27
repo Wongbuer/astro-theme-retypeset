@@ -434,6 +434,7 @@ async function checkImageLinks(options) {
 
   console.log('正在检查图片链接...');
   let updatedCount = 0;
+  let updatedDateCount = 0;
 
   for (const mdFile of mdFiles) {
     const content = fs.readFileSync(mdFile, 'utf8');
@@ -445,22 +446,114 @@ async function checkImageLinks(options) {
     }
 
     const abbrlink = abbrMatch[1];
+    
+    // 检查图片链接
     const { needsUpdate, oldLinks } = checkImagePathsInContent(content, abbrlink);
+    
+    // 检查是否需要更新 updated 字段
+    const needsUpdateDate = checkAndUpdateModifiedDate(mdFile, content);
+    
+    if (needsUpdate || needsUpdateDate) {
+      let updatedContent = content;
+      
+      if (needsUpdate) {
+        console.log(`文件 ${path.relative(rootDir, mdFile)} 包含不匹配的图片链接`);
 
-    if (needsUpdate) {
-      console.log(`文件 ${path.relative(rootDir, mdFile)} 包含不匹配的图片链接`);
-
-      if (options.force || await confirmAction(`是否自动修复图片链接？(y/N) `)) {
-        const updatedContent = updateImagePaths(content, oldLinks, abbrlink);
+        if (options.force || await confirmAction(`是否自动修复图片链接？(y/N) `)) {
+          updatedContent = updateImagePaths(updatedContent, oldLinks, abbrlink);
+          updatedCount++;
+        }
+      }
+      
+      if (needsUpdateDate) {
+        console.log(`文件 ${path.relative(rootDir, mdFile)} 需要更新修改日期`);
+        
+        if (options.force || await confirmAction(`是否更新修改日期？(y/N) `)) {
+          updatedContent = updateModifiedDate(mdFile, updatedContent);
+          updatedDateCount++;
+        }
+      }
+      
+      // 写入更新后的内容
+      if (updatedContent !== content) {
         fs.writeFileSync(mdFile, updatedContent, 'utf8');
         console.log(`已更新文件 ${path.relative(rootDir, mdFile)}`);
-        updatedCount++;
       }
     }
   }
 
-  console.log(`检查完成，共更新了 ${updatedCount} 个文件`);
-  return updatedCount > 0;
+  console.log(`检查完成，共更新了 ${updatedCount} 个文件的图片链接，${updatedDateCount} 个文件的修改日期`);
+  return (updatedCount > 0 || updatedDateCount > 0);
+}
+
+// 检查文件是否需要更新 updated 字段
+function checkAndUpdateModifiedDate(filePath, content) {
+  try {
+    // 获取文件的修改时间
+    const stats = fs.statSync(filePath);
+    const modifiedDate = new Date(stats.mtime);
+    const modifiedDateStr = formatDate(modifiedDate);
+    
+    // 检查 frontmatter 中是否已有 updated 字段
+    const updatedMatch = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
+    
+    // 如果没有 updated 字段，或者 updated 字段的值与文件修改时间不一致，则需要更新
+    if (!updatedMatch) {
+      // 检查是否有 published 字段，确保文件有 frontmatter
+      const publishedMatch = content.match(/published:\s*(\d{4}-\d{2}-\d{2})/);
+      if (publishedMatch) {
+        return true;
+      }
+    } else {
+      const currentUpdated = updatedMatch[1];
+      if (currentUpdated !== modifiedDateStr) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (err) {
+    console.error(`检查文件修改日期时出错: ${err.message}`);
+    return false;
+  }
+}
+
+// 更新文件的 updated 字段
+function updateModifiedDate(filePath, content) {
+  try {
+    // 获取文件的修改时间
+    const stats = fs.statSync(filePath);
+    const modifiedDate = new Date(stats.mtime);
+    const modifiedDateStr = formatDate(modifiedDate);
+    
+    // 检查 frontmatter 中是否已有 updated 字段
+    const updatedMatch = content.match(/updated:\s*(\d{4}-\d{2}-\d{2})/);
+    
+    if (updatedMatch) {
+      // 替换现有的 updated 字段
+      return content.replace(
+        /updated:\s*(\d{4}-\d{2}-\d{2})/,
+        `updated: ${modifiedDateStr}`
+      );
+    } else {
+      // 在 published 字段后添加 updated 字段
+      return content.replace(
+        /(published:\s*\d{4}-\d{2}-\d{2})/,
+        `$1\nupdated: ${modifiedDateStr}`
+      );
+    }
+  } catch (err) {
+    console.error(`更新文件修改日期时出错: ${err.message}`);
+    return content;
+  }
+}
+
+// 格式化日期为 yyyy-mm-dd
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // 获取目录下的所有 Markdown 文件
@@ -638,8 +731,12 @@ function showHelp(command) {
   --help, -h                      显示帮助信息
 
 说明:
-  'check' 命令会检查 Markdown 文件中的图片链接，确保它们使用了与文章 abbrlink 相同的路径。
-  如发现不匹配，可以自动修复图片链接并移动相应的图片文件。
+  'check' 命令会执行以下检查:
+  1. 检查 Markdown 文件中的图片链接，确保它们使用了与文章 abbrlink 相同的路径。
+     如发现不匹配，可以自动修复图片链接并移动相应的图片文件。
+  2. 检查文件是否有修改，如有修改则更新 frontmatter 中的 updated 字段。
+     如果 frontmatter 中没有 updated 字段，则会添加该字段。
+  
   不指定特定文件时，将检查 src/content/posts 目录下的所有 Markdown 文件。
 
 示例:
@@ -765,6 +862,9 @@ function processMarkdownFile(options) {
       // 获取文件创建日期
       const autoPublished = getFileCreationDate(sourcePath);
       const published = customPublished || autoPublished;
+      
+      // 获取文件修改日期作为 updated 字段
+      const updated = formatDate(new Date(fs.statSync(sourcePath).mtime));
 
       // 如果没有指定标签，添加一个默认标签
       const finalTags = tags.length > 0 ? tags : ['未分类'];
@@ -773,6 +873,7 @@ function processMarkdownFile(options) {
       const frontmatter = `---
 title: ${title}
 published: ${published}
+updated: ${updated}
 tags:
 ${finalTags.map(tag => `  - ${tag}`).join('\n')}
 toc: ${toc}
